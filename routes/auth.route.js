@@ -5,5 +5,8 @@ const router = express.Router();
 
 router.post("/register", Register);
 router.post("/login", Login);
+router.get("/register", (req, res) => {
+  res.json({ success: true, message: "Register endpoint is alive ✅" });
+});
 
 export default router;
