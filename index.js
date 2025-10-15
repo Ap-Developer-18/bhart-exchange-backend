@@ -6,15 +6,21 @@ import AuthRoute from "./routes/auth.route.js";
 dotenv.config();
 const app = express();
 app.use(express.json());
-
 const port = process.env.PORT;
+
+app.use(
+  cors({
+    origin: "*", // 👈 yahan "*" sabko allow karta hai
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
 app.listen(port, () => {
   console.log("our server is runing at", port);
 });
 
 // database connection
-
 mongoose
   .connect(process.env.MONGODB_CONN)
   .then(() => {
