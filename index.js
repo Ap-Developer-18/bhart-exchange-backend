@@ -9,10 +9,9 @@ const app = express();
 
 app.use(express.json());
 
-// ✅ Enable CORS
 app.use(
   cors({
-    origin: "*", // allow all origins
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -24,11 +23,9 @@ app.listen(port, () => {
   console.log("Our server is running at", port);
 });
 
-// ✅ Database connection
 mongoose
   .connect(process.env.MONGODB_CONN)
   .then(() => console.log("Database connected"))
   .catch((err) => console.log("Connection failed", err));
 
-// ✅ Routes
 app.use("/api/auth", AuthRoute);
