@@ -1,127 +1,97 @@
+import bcryptjs from "bcryptjs";
 import User from "../models/user.model.js";
-import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 
-// ✅ Function to generate a 6-digit OTP
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-// ✅ Configure email transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER, // your Gmail
-    pass: process.env.EMAIL_PASS, // your app password
-  },
-});
-
-// ✅ Send OTP Controller
-export const SendOtp = async (req, res) => {
+export const Register = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { name, email, password } = req.body;
 
-    if (!email) {
+    // check if all fields are provided
+    if (!name || !email || !password) {
       return res.status(400).json({
         status: false,
-        message: "Email is required",
+        message: "All fields are required",
       });
     }
 
-    // Generate OTP & expiry time
-    const otp = generateOTP();
-    const otpExpires = Date.now() + 5 * 60 * 1000; // 5 minutes
-
-    // Check if user exists or create new
-    let user = await User.findOne({ email });
-    if (!user) {
-      user = new User({ email });
+    // check if user already registered
+    const checkRegistrationStatus = await User.findOne({ email });
+    if (checkRegistrationStatus) {
+      return res.status(409).json({
+        status: false,
+        message: "User already registered",
+      });
     }
 
-    user.otp = otp;
-    user.otpExpires = otpExpires;
-    await user.save();
+    // hash password
+    const hashPassword = bcryptjs.hashSync(password, 10);
 
-    // Send OTP email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Your Login OTP",
-      text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+    // create new user
+    const newRegistration = new User({
+      name,
+      email,
+      password: hashPassword,
     });
 
+    // save new user
+    await newRegistration.save();
+
+    // success response
     res.status(200).json({
       status: true,
-      message: "OTP sent successfully to your email.",
+      message: "Registration success",
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       status: false,
-      message: "Error sending OTP",
       error: error.message,
     });
   }
 };
 
-// ✅ Verify OTP Controller (Login)
-export const VerifyOtp = async (req, res) => {
+export const Login = async (req, res) => {
   try {
-    const { email, otp } = req.body;
-
-    if (!email || !otp) {
-      return res.status(400).json({
-        status: false,
-        message: "Email and OTP are required",
-      });
-    }
+    const { email, password } = req.body;
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({
+      return res.status(403).json({
         status: false,
-        message: "User not found",
+        message: "Invalid login credentials.",
       });
     }
 
-    // Verify OTP
-    if (user.otp !== otp) {
-      return res.status(400).json({
+    // check password
+    const isVerifyPassword = await bcryptjs.compare(password, user.password);
+    if (!isVerifyPassword) {
+      return res.status(403).json({
         status: false,
-        message: "Invalid OTP",
+        message: "Invalid login credentials.",
       });
     }
 
-    if (Date.now() > user.otpExpires) {
-      return res.status(400).json({
-        status: false,
-        message: "OTP expired",
-      });
-    }
+    // remove password before sending response
+    const userData = user.toObject();
+    delete userData.password;
 
-    // Clear OTP after verification
-    user.otp = undefined;
-    user.otpExpires = undefined;
-    await user.save();
-
-    // Generate JWT Token
+    // create jwt token
     const token = jwt.sign(
       { id: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
+    // success response
     res.status(200).json({
       status: true,
-      message: "Login successful.",
+      message: "Login success.",
       token,
-      user: { email: user.email },
+      user: userData,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       status: false,
-      message: "Error verifying OTP",
+      message: "Internal Server Error",
       error: error.message,
     });
   }

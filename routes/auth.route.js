@@ -1,13 +1,12 @@
-// routes/auth.route.js
 import express from "express";
-import { SendOtp, VerifyOtp } from "../controllers/AuthController.js";
+import { Login, Register } from "../controllers/AuthController.js";
 
 const router = express.Router();
-router.post("/send-otp", SendOtp);
-router.post("/verify-otp", VerifyOtp);
 
-router.get("/", (req, res) => {
-  res.json({ success: true, message: "Auth API is working fine" });
+router.post("/register", Register);
+router.post("/login", Login);
+router.get("/register", (req, res) => {
+  res.json({ success: true, message: "it is working" });
 });
 
 export default router;
